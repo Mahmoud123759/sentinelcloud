@@ -1,0 +1,176 @@
+#!/bin/bash
+
+# =========================================================
+# JENKINS + DOCKER + DEVSECOPS TOOLS INSTALLATION
+# FOR AMAZON LINUX 2023 / AMAZON LINUX 2
+# =========================================================
+
+set -e
+
+# =========================================================
+# SYSTEM UPDATE
+# =========================================================
+
+sudo dnf update -y
+
+# =========================================================
+# INSTALL JAVA 17
+# =========================================================
+
+sudo dnf install java-21-amazon-corretto -y
+
+java --version
+
+# =========================================================
+# INSTALL GIT
+# =========================================================
+
+sudo dnf install git -y
+
+git --version
+
+# =========================================================
+# INSTALL JENKINS
+# =========================================================
+
+sudo wget -O /etc/yum.repos.d/jenkins.repo \
+https://pkg.jenkins.io/redhat-stable/jenkins.repo
+
+sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+
+sudo dnf install jenkins -y
+
+sudo systemctl daemon-reload
+sudo systemctl enable jenkins
+sudo systemctl start jenkins
+
+sudo systemctl status jenkins --no-pager
+
+# =========================================================
+# INSTALL DOCKER
+# =========================================================
+
+sudo dnf install docker -y
+
+sudo systemctl enable docker
+sudo systemctl start docker
+
+# Add users to docker group
+sudo usermod -aG docker jenkins
+sudo usermod -aG docker ec2-user
+
+# Optional permission fix
+sudo chmod 666 /var/run/docker.sock
+
+docker --version
+
+# =========================================================
+# RESTART JENKINS
+# =========================================================
+
+sudo systemctl restart jenkins
+
+# =========================================================
+# RUN SONARQUBE CONTAINER
+# =========================================================
+
+docker run -d \
+  --name sonar \
+  -p 9000:9000 \
+  sonarqube:10.6-community
+
+# =========================================================
+# INSTALL AWS CLI V2
+# =========================================================
+
+sudo dnf install unzip curl -y
+
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+-o "awscliv2.zip"
+
+unzip awscliv2.zip
+
+sudo ./aws/install
+
+aws --version
+
+# =========================================================
+# INSTALL KUBECTL
+# =========================================================
+
+curl -LO "https://dl.k8s.io/release/v1.28.4/bin/linux/amd64/kubectl"
+
+chmod +x kubectl
+
+sudo mv kubectl /usr/local/bin/
+
+kubectl version --client
+
+# =========================================================
+# INSTALL eksctl
+# =========================================================
+
+curl --silent --location \
+"https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" \
+| tar xz -C /tmp
+
+sudo mv /tmp/eksctl /usr/local/bin
+
+eksctl version
+
+# =========================================================
+# INSTALL TERRAFORM
+# =========================================================
+
+sudo dnf install -y yum-utils
+
+sudo yum-config-manager --add-repo \
+https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+
+sudo dnf -y install terraform
+
+terraform version
+
+# =========================================================
+# INSTALL TRIVY
+# =========================================================
+
+sudo rpm --import https://aquasecurity.github.io/trivy-repo/rpm/public.key
+
+cat <<EOF | sudo tee /etc/yum.repos.d/trivy.repo
+[trivy]
+name=Trivy repository
+baseurl=https://aquasecurity.github.io/trivy-repo/rpm/releases/\$basearch/
+gpgcheck=1
+enabled=1
+gpgkey=https://aquasecurity.github.io/trivy-repo/rpm/public.key
+EOF
+
+sudo dnf install trivy -y
+
+trivy --version
+
+# =========================================================
+# INSTALL HELM
+# =========================================================
+
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+helm version
+
+# =========================================================
+# FINAL OUTPUT
+# =========================================================
+
+echo "====================================================="
+echo "INSTALLATION COMPLETED SUCCESSFULLY"
+echo "====================================================="
+
+echo "Jenkins URL:"
+echo "http://<EC2-PUBLIC-IP>:8080"
+
+echo ""
+echo "Initial Jenkins Password:"
+sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+
+# readlink -f /usr/bin/java
