@@ -42,7 +42,7 @@ spec:
                 - ALL
             privileged: false
             readOnlyRootFilesystem: true
-          image: 804136008051.dkr.ecr.us-east-1.amazonaws.com/fullstack:10
+          image: 804136008051.dkr.ecr.us-east-1.amazonaws.com/fullstack:12
           ports:
           - containerPort: 8080
           readinessProbe:
